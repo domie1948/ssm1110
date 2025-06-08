@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.RenwuDao">
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        a.id as id
+        ,a.renwu_types as renwuTypes
+        ,a.bumen_types as bumenTypes
+        ,a.zhiwei_types as zhiweiTypes
+        ,a.renwu_content as renwuContent
+        ,a.insert_time as insertTime
+        ,a.create_time as createTime
+    </sql>
+
+    <select id="selectListView" parameterType="map" resultType="com.entity.view.RenwuView" >
+        SELECT
+        <include refid="Base_Column_List" />
+
+--         级联表的字段
+
+        FROM renwu  a
+
+        <where>
+            <if test="params.renwuTypes != null">
+                and a.renwu_types = #{params.renwuTypes}
+            </if>
+            <choose>
+                <!-- 用户查询 -->
+                <when test="params.flag == 1 ">
+                          <!-- 部门和职位都不为空 -->
+                        <if test="params.selectFlag == 2 ">
+                            and (a.bumen_types = #{params.bumenTypes} and a.zhiwei_types = #{params.zhiweiTypes})
+                        </if>
+                        <!-- 部门为空 职位不为空  所有部门下的当前职位下的任务 -->
+                        <if test="params.selectFlag == 3">
+                            and (a.bumen_types = 0 and a.zhiwei_types = #{params.zhiweiTypes})
+                        </if>
+                        <!-- 部门不为空 职位为空  当前部门下的所有职位都能看到的信息 -->
+                        <if test="params.selectFlag == 1">
+                            and (a.bumen_types = #{params.bumenTypes} and a.zhiwei_types = 0)
+                        </if>
+                        <!-- 部门为空 职位为空
+                             当前部门下的所有职位的任务
+                             当前部门下的当前职位的任务
+                             所有部门下的当前职位的任务
+                         -->
+                        <if test="params.selectFlag == 4">
+                            and
+                            (
+                                  (a.bumen_types = #{params.bumenTypes} and a.zhiwei_types = 0)
+                              or  (a.bumen_types = #{params.bumenTypes} and a.zhiwei_types = #{params.zhiweiTypes})
+                              or  (a.bumen_types = 0 and a.zhiwei_types = #{params.zhiweiTypes})
+                            )
+                        </if>
+                </when>
+                <!-- 管理员查询 -->
+                <otherwise>
+                    <if test="params.bumenTypes != null">
+                        and a.bumen_types = #{params.bumenTypes}
+                    </if>
+                    <if test="params.zhiweiTypes != null">
+                        and a.zhiwei_types = #{params.zhiweiTypes}
+                    </if>
+                </otherwise>
+            </choose>
+            <if test=" params.renwuContent != '' and params.renwuContent != null and params.renwuContent != 'null' ">
+                and a.renwu_content like CONCAT('%',#{params.renwuContent},'%')
+            </if>
+            <if test=" params.insertTimeStart != '' and params.insertTimeStart != null ">
+                <![CDATA[  and DATE_FORMAT(a.insert_time, '%Y-%m-%d %H:%T:%s') >=
+                DATE_FORMAT(#{params.insertTimeStart}, '%Y-%m-%d %H:%T:%s')   ]]>
+            </if>
+            <if test=" params.insertTimeEnd != '' and params.insertTimeEnd != null ">
+                <![CDATA[  and DATE_FORMAT(a.insert_time, '%Y-%m-%d %H:%T:%s') <=
+                DATE_FORMAT(#{params.insertTimeEnd} , '%Y-%m-%d %H:%T:%s')    ]]>
+            </if>
+
+        </where>
+
+        order by a.id desc
+    </select>
+
+</mapper>
